@@ -1,0 +1,75 @@
+import java.io.IOException;
+import java.util.StringTokenizer;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+public class PrimeMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+ private final static IntWritable one = new IntWritable(1);
+ private final static IntWritable zero = new IntWritable(0);
+ public void map(LongWritable key, Text value, Context context) throws
+IOException, InterruptedException {
+ String line = value.toString();
+ StringTokenizer tokenizer = new StringTokenizer(line);
+ while (tokenizer.hasMoreTokens()) {
+ int num = Integer.parseInt(tokenizer.nextToken());
+ if (isPrime(num)) {
+ context.write(new Text(Integer.toString(num)), one);
+ } else {
+ context.write(new Text(Integer.toString(num)), zero);
+ }
+ }
+ }
+ private boolean isPrime(int n) {
+ if (n <= 1) {
+ return false;
+ }
+ for (int i = 2; i * i <= n; i++) {
+ if (n % i == 0) {
+ return false;
+ }
+ }
+ return true;
+ }
+}
+Reducer Function
+// PrimeReducer.java
+import java.io.IOException;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Reducer;
+public class PrimeReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+ public void reduce(Text key, Iterable<IntWritable> values, Context context)
+ throws IOException, InterruptedException {
+ int sum = 0;
+ for (IntWritable val : values) {
+ sum += val.get();
+ }
+ if (sum == 1) {
+ context.write(key, new IntWritable(1));
+ }
+ }
+}
+MapReduce Function
+// PrimeNumberFinder.java
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+public class PrimeNumberFinder {
+ public static void main(String[] args) throws Exception {
+ Configuration conf = new Configuration();
+ Job job = Job.getInstance(conf, "Prime Number Finder");
+ job.setJarByClass(PrimeNumberFinder.class);
+ job.setMapperClass(PrimeMapper.class);
+ job.setReducerClass(PrimeReducer.class);
+ job.setOutputKeyClass(Text.class);
+ job.setOutputValueClass(IntWritable.class);
+ FileInputFormat.addInputPath(job, new Path(args[0]));
+ FileOutputFormat.setOutputPath(job, new Path(args[1]));
+ System.exit(job.waitForCompletion(true) ? 0 : 1);
+ }
+}
