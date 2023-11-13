@@ -1,0 +1,59 @@
+import java.io.IOException;
+import org.apache.hadoop.io.FloatWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Mapper;
+public class MaximumAverageMapper extends
+Mapper<Object, Text, Text, FloatWritable> {
+public void map(Object key, Text for value, Context context)
+throws IOException, InterruptedException {
+String line = value.toString();
+String [] a = line.split(" ");
+System.out.println(line);
+int sum=0;
+for(String i:a){
+sum += Integer.parseInt(i);
+}
+float avg = sum/a.length;
+System.out.println(avg);
+context.write(new Text("maxavg"),new FloatWritable(avg) );
+}
+}
+public class MaximumAverageReducer extends Reducer<Text, FloatWritable, Text,
+FloatWritable> {
+public void reduce(Text key, Iterable<FloatWritable> values, Context context)
+throws IOException, InterruptedException {
+float max=0;
+for (FloatWritable val : values) {
+if(val.get()>max){
+max=val.get();
+}
+}
+context.write(key, new FloatWritable(max));
+}
+}
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.FloatWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.reduce.IntSumReducer;
+public class MaximumAverageDriver {
+public static void main(String[] args) throws Exception {
+Configuration conf = new Configuration();
+Job job = Job.getInstance(conf, "maxaverage");
+job.setMapperClass(MaximumAverageMapper.class);
+job.setReducerClass(MaximumAverageReducer.class);
+job.setOutputKeyClass(Text.class);
+job.setOutputValueClass(FloatWritable.class);
+FileInputFormat.setInputPaths(job, new Path(args[0]));
+FileOutputFormat.setOutputPath(job, new Path(args[1]));
+if (!job.waitForCompletion(true))
+return;
+}
+}
